@@ -802,7 +802,7 @@ function CreatePostForm({ editId, loaderData }: CreatePostFormProps) {
       {/* Posted-edit notice banner */}
       {isPostedEdit && (
         <div className="border-b bg-muted px-6 py-3">
-          <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <p className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
             <Lock className="h-3.5 w-3.5 shrink-0" />
             <span>
               This post has been sent. Only{' '}

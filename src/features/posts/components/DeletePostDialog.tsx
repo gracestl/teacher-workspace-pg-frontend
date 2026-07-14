@@ -12,20 +12,20 @@ import {
   Label,
 } from '~/components/ui';
 
-/** Confirmation string the user must type for posted/open posts. */
+/** Confirmation string the user must type whenever any selected item has been sent/posted. */
 const CONFIRM_WORD = 'DELETE';
+
+export interface DeletePostDialogItem {
+  title: string;
+  /** Whether this specific post has been sent to parents (vs. still a draft/scheduled). */
+  isPosted: boolean;
+}
 
 interface DeletePostDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /**
-   * `'draft'` collapses the dialog to a single-click confirm.
-   * `'posted'` shows the full live-content warning and requires the user to
-   * type "DELETE" before the button enables. `null` renders nothing.
-   */
-  mode: 'draft' | 'posted' | null;
-  /** Post title surfaced in the description so teachers see what they're about to delete. */
-  title: string;
+  /** Posts pending deletion. Empty array (or `open: false`) renders nothing. */
+  items: DeletePostDialogItem[];
   onConfirm: () => Promise<void>;
   /** Disables the primary button while the delete request is in flight. */
   pending?: boolean;
@@ -34,23 +34,43 @@ interface DeletePostDialogProps {
 function DeletePostDialog({
   open,
   onOpenChange,
-  mode,
-  title,
+  items,
   onConfirm,
   pending = false,
 }: DeletePostDialogProps) {
   const [confirmInput, setConfirmInput] = useState('');
 
-  if (!mode) return null;
+  if (!open || items.length === 0) return null;
 
-  const isDraft = mode === 'draft';
-  const canDelete = isDraft || confirmInput === CONFIRM_WORD;
+  const count = items.length;
+  const isBulk = count > 1;
+  const postedCount = items.filter((i) => i.isPosted).length;
+  const draftCount = count - postedCount;
+  const allDrafts = postedCount === 0;
+  const allPosted = draftCount === 0;
 
-  const description = isDraft
-    ? 'This draft will be permanently removed. This cannot be undone.'
-    : 'This post has been sent to parents. Deleting it will remove it from the Parents Gateway app for everyone immediately. This cannot be undone.';
+  // Any sent/posted content in the selection raises the friction bar for
+  // the whole action, since deleting it also removes it from parents' apps.
+  const requiresTypedConfirm = postedCount > 0;
+  const canDelete = !requiresTypedConfirm || confirmInput === CONFIRM_WORD;
 
-  const confirmLabel = isDraft ? 'Delete draft' : 'Delete for everyone';
+  const description = allDrafts
+    ? isBulk
+      ? `These ${count} drafts will be permanently removed. This cannot be undone.`
+      : 'This draft will be permanently removed. This cannot be undone.'
+    : allPosted
+      ? isBulk
+        ? `These ${count} posts have been sent to parents. Deleting them will remove them from the Parents Gateway app for everyone immediately. This cannot be undone.`
+        : 'This post has been sent to parents. Deleting it will remove it from the Parents Gateway app for everyone immediately. This cannot be undone.'
+      : `${postedCount} of these posts ${postedCount === 1 ? 'has' : 'have'} been sent to parents — deleting ${postedCount === 1 ? 'it' : 'them'} will remove ${postedCount === 1 ? 'it' : 'them'} from the Parents Gateway app for everyone immediately. The other ${draftCount} ${draftCount === 1 ? 'draft' : 'drafts'} will also be permanently removed. This cannot be undone.`;
+
+  const confirmLabel = isBulk
+    ? allDrafts
+      ? `Delete ${count} drafts`
+      : `Delete ${count} posts`
+    : allDrafts
+      ? 'Delete draft'
+      : 'Delete for everyone';
 
   function handleOpenChange(next: boolean) {
     if (!next) setConfirmInput('');
@@ -66,16 +86,26 @@ function DeletePostDialog({
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Delete post?</DialogTitle>
+          <DialogTitle>{isBulk ? `Delete ${count} posts?` : 'Delete post?'}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-1 py-1">
-          <p className="text-xs text-muted-foreground">Post</p>
-          <p className="truncate text-sm font-medium">{title || 'Untitled'}</p>
+          <p className="text-xs text-muted-foreground">{isBulk ? `Posts (${count})` : 'Post'}</p>
+          {isBulk ? (
+            <ul className="max-h-32 space-y-1 overflow-y-auto">
+              {items.map((item, i) => (
+                <li key={i} className="truncate text-sm font-medium">
+                  {item.title || 'Untitled'}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="truncate text-sm font-medium">{items[0].title || 'Untitled'}</p>
+          )}
         </div>
 
-        {!isDraft && (
+        {requiresTypedConfirm && (
           <div className="space-y-1.5">
             <Label htmlFor="delete-confirm">
               Type <span className="font-mono font-semibold">{CONFIRM_WORD}</span> to confirm

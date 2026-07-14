@@ -57,7 +57,10 @@ import {
 import { NotFoundError } from '~/features/posts/api/errors';
 import { getConfigs } from '~/features/posts/api/session';
 import type { ApiConfig } from '~/features/posts/api/types';
-import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
+import {
+  DeletePostDialog,
+  type DeletePostDialogItem,
+} from '~/features/posts/components/DeletePostDialog';
 import {
   DEFAULT_POST_FILTERS,
   PostFilterPopover,
@@ -216,12 +219,20 @@ function compareBySort(a: PostRowData, b: PostRowData, sort: SortState): number 
   }
 }
 
+function isDraftStatus(row: Pick<PostRowData, 'status'>): boolean {
+  return row.status === 'draft' || row.status === 'scheduled';
+}
+
 function deletePostRow(row: PostRowData): Promise<unknown> {
-  const isDraft = row.status === 'draft' || row.status === 'scheduled';
+  const isDraft = isDraftStatus(row);
   if (row.kind === 'form') {
     return isDraft ? deleteConsentFormDraft(row.numericId) : deleteConsentForm(row.numericId);
   }
   return isDraft ? deleteDraft(row.numericId) : deleteAnnouncement(row.numericId);
+}
+
+function toDeleteDialogItem(row: PostRowData): DeletePostDialogItem {
+  return { title: row.title, isPosted: !isDraftStatus(row) };
 }
 
 const PAGE_SIZE = 20;
@@ -368,12 +379,6 @@ const PostsListPage: React.FC = () => {
     }
   }, [pendingDelete, refetch]);
 
-  const deleteMode: 'draft' | 'posted' | null = !pendingDelete
-    ? null
-    : pendingDelete.status === 'draft' || pendingDelete.status === 'scheduled'
-      ? 'draft'
-      : 'posted';
-
   // Bulk delete
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
@@ -381,11 +386,6 @@ const PostsListPage: React.FC = () => {
     () => posts.filter((p) => selectedIds.has(p.id) && p.ownership !== 'shared'),
     [posts, selectedIds],
   );
-  const bulkDeleteMode: 'draft' | 'posted' = selectedRows.some(
-    (r) => r.status !== 'draft' && r.status !== 'scheduled',
-  )
-    ? 'posted'
-    : 'draft';
 
   const confirmBulkDelete = useCallback(async () => {
     if (selectedRows.length === 0) return;
@@ -685,8 +685,7 @@ const PostsListPage: React.FC = () => {
         onOpenChange={(open) => {
           if (!open) setPendingDelete(null);
         }}
-        mode={deleteMode}
-        title={pendingDelete?.title ?? ''}
+        items={pendingDelete ? [toDeleteDialogItem(pendingDelete)] : []}
         pending={deleting}
         onConfirm={confirmDelete}
       />
@@ -694,12 +693,7 @@ const PostsListPage: React.FC = () => {
       <DeletePostDialog
         open={bulkDeleteOpen}
         onOpenChange={setBulkDeleteOpen}
-        mode={bulkDeleteMode}
-        title={
-          selectedRows.length === 1
-            ? (selectedRows[0]?.title ?? '')
-            : `${selectedRows.length} selected posts`
-        }
+        items={selectedRows.map(toDeleteDialogItem)}
         pending={bulkDeleting}
         onConfirm={confirmBulkDelete}
       />

@@ -32,7 +32,10 @@ import { fetchSchoolStaff } from '~/features/posts/api/school';
 import { fetchSession, getConfigs } from '~/features/posts/api/session';
 import type { ApiSchoolStaff, ApiSession } from '~/features/posts/api/types';
 import { ConsentFormHistoryList } from '~/features/posts/components/ConsentFormHistoryList';
-import { DeletePostDialog } from '~/features/posts/components/DeletePostDialog';
+import {
+  DeletePostDialog,
+  type DeletePostDialogItem,
+} from '~/features/posts/components/DeletePostDialog';
 import {
   PostCard,
   isoToSgtDate,
@@ -428,8 +431,16 @@ const PostDetailContent: React.FC<PostDetailContentProps> = ({ post, staff, sess
       <DeletePostDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        mode={deleteMode(post)}
-        title={post.title}
+        items={
+          deleteOpen
+            ? [
+                {
+                  title: post.title,
+                  isPosted: deleteMode(post) === 'posted',
+                } satisfies DeletePostDialogItem,
+              ]
+            : []
+        }
         onConfirm={handleDeleteConfirm}
         pending={deleting}
       />

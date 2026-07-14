@@ -12,7 +12,6 @@ import {
   MapPin,
   MoreHorizontal,
   User,
-  Users,
   ZoomIn,
 } from 'lucide-react';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -157,7 +156,6 @@ const PostPreview = React.memo(function PostPreview({
     questions,
     enquiryEmail,
     selectedRecipients,
-    selectedStaff,
     websiteLinks,
     shortcuts,
     attachments,
@@ -644,23 +642,6 @@ const PostPreview = React.memo(function PostPreview({
           </div>
         )}
       </div>
-
-      {/* Teacher-facing footer: staff-in-charge isn't shown in the parent app,
-          but teachers need to verify their selection at a glance. */}
-      {selectedStaff.length > 0 && (
-        <div className="flex items-start gap-2 rounded-xl bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
-          <Users className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-          <div className="flex flex-wrap gap-x-1.5">
-            <span className="font-medium text-foreground">Staff-in-charge:</span>
-            {selectedStaff.map((s, i) => (
-              <span key={s.id}>
-                {s.label}
-                {i < selectedStaff.length - 1 ? ',' : ''}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 });
